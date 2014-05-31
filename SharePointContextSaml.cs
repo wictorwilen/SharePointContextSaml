@@ -1,5 +1,32 @@
-﻿using Microsoft.IdentityModel.S2S.Tokens;
-using Microsoft.SharePoint.Client;
+﻿///////////////////////////////////////////
+// SharePointContextSaml.cs
+//
+// Authors and credits: 
+//   Wictor Wilén
+//   Steve Peschka
+//
+// Download:
+//  https://github.com/wictorwilen/SharePointContextSaml
+//
+// License:
+//   Copyright 2014 Wictor Wilén
+//   
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//   
+//       http://www.apache.org/licenses/LICENSE-2.0
+//   
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+//
+//
+///////////////////////////////////////////
+
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,22 +35,45 @@ using System.Linq;
 using System.Security.Claims;
 using System.Web;
 using System.Web.Configuration;
+using Microsoft.SharePoint.Client;
+using Microsoft.IdentityModel.S2S.Tokens;
 
+// TODO: Replace this namespace with your web project default namespace
 namespace Replace.This.With.Your.Custom.Namespace
 {
 
     /// <summary>
     /// TokenHelper.cs extensions
     /// </summary>
+    /// <remarks>
+    /// You need to modify the default TokenHelper.cs class declaration and add the partial keyword
+    /// </remarks>
     public static partial class TokenHelper
     {
         /// <summary>
         /// Identity Claim Type options
         /// </summary>
+        /// <remarks>
+        /// Configured in web.config appSettings using the setting <c>spsaml:IdentityClaimType</c>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// &lt;add key="spsaml:IdentityClaimType" value="SMTP"/&gt;
+        /// </code>
+        /// </example>
         public enum IdentityClaimType
         {
+            /// <summary>
+            /// Use e-mail address as identity claim
+            /// </summary>
             SMTP,
+            /// <summary>
+            /// Use UPN as identity claim
+            /// </summary>
             UPN,
+            /// <summary>
+            /// Use SIP address as identity claim
+            /// </summary>
             SIP
         }
 
@@ -62,14 +112,15 @@ namespace Replace.This.With.Your.Custom.Namespace
 
         /// <summary>
         /// Retrieves an S2S client context with an access token signed by the application's private certificate on 
-        /// behalf of the specified IPrincipal and intended for application at the targetApplicationUri using the 
+        /// behalf of the specified Claims Identity and intended for application at the targetApplicationUri using the 
         /// targetRealm. If no Realm is specified in web.config, an auth challenge will be issued to the 
         /// targetApplicationUri to discover it.
         /// </summary>
         /// <param name="targetApplicationUri">Url of the target SharePoint site</param>
-        /// <param name="UserPrincipal">Identity of the user on whose behalf to create the access token; use HttpContext.Current.User</param>
-        /// <param name="SamlIdentityClaimType">The claim type that is used as the identity claim for the user</param>
+        /// <param name="identity">Identity of the user on whose behalf to create the access token; use HttpContext.Current.User</param>
+        /// <param name="UserIdentityClaimType">The claim type that is used as the identity claim for the user</param>
         /// <param name="IdentityClaimProviderType">The type of identity provider being used</param>
+        /// <param name="UseAppOnlyClaim">Use an App Only claim</param>
         /// <returns>A ClientContext using an access token with an audience of the target application</returns>
         public static ClientContext GetS2SClientContextWithClaimsIdentity(
             Uri targetApplicationUri,
@@ -78,9 +129,6 @@ namespace Replace.This.With.Your.Custom.Namespace
             ClaimProviderType IdentityClaimProviderType,
             bool UseAppOnlyClaim)
         {
-            //get the identity claim info first
-
-
             string realm = string.IsNullOrEmpty(Realm) ? GetRealmFromTargetUrl(targetApplicationUri) : Realm;
 
 
@@ -95,7 +143,18 @@ namespace Replace.This.With.Your.Custom.Namespace
         }
 
 
-
+        /// <summary>
+        /// Retrieves an S2S access token signed by the application's private certificate on 
+        /// behalf of the specified Claims Identity and intended for application at the targetApplicationUri using the 
+        /// targetRealm. If no Realm is specified in web.config, an auth challenge will be issued to the 
+        /// targetApplicationUri to discover it.
+        /// </summary>
+        /// <param name="targetApplicationUri">Url of the target SharePoint site</param>
+        /// <param name="identity">Identity of the user on whose behalf to create the access token; use HttpContext.Current.User</param>
+        /// <param name="UserIdentityClaimType">The claim type that is used as the identity claim for the user</param>
+        /// <param name="IdentityClaimProviderType">The type of identity provider being used</param>
+        /// <param name="UseAppOnlyClaim">Use an App Only claim</param>
+        /// <returns></returns>
         public static string GetS2SClaimsAccessTokenWithClaims(
             Uri targetApplicationUri,
             ClaimsIdentity identity,
@@ -164,20 +223,11 @@ namespace Replace.This.With.Your.Custom.Namespace
                 actorClaims.Add(new JsonWebTokenClaim(TokenHelper.TrustedForImpersonationClaimType, "true"));
             }
 
-            //****************************************************************************
-            //SPSAML
-
-            //if (samlClaimType == SAML_ID_CLAIM_TYPE_UPN)
-            //{
-            //    addSamlClaim = true;
-            //    samlClaimType = SAML_ID_CLAIM_TYPE_SIP;
-            //    samlClaimValue = "bluto2@toys.com";
-            //}
 
             if (addSamlClaim)
+            {
                 actorClaims.Add(new JsonWebTokenClaim(samlClaimType, samlClaimValue));
-            //actorClaims.Add(new JsonWebTokenClaim("smtp", "speschka@vbtoys.com"));
-            //****************************************************************************
+            }
 
             // Create token
             JsonWebSecurityToken actorToken = new JsonWebSecurityToken(
@@ -203,11 +253,10 @@ namespace Replace.This.With.Your.Custom.Namespace
             List<JsonWebTokenClaim> outerClaims = null == claims ? new List<JsonWebTokenClaim>() : new List<JsonWebTokenClaim>(claims);
             outerClaims.Add(new JsonWebTokenClaim(ActorTokenClaimType, actorTokenString));
 
-            //****************************************************************************
-            //SPSAML
             if (addSamlClaim)
+            {
                 outerClaims.Add(new JsonWebTokenClaim(samlClaimType, samlClaimValue));
-            //****************************************************************************
+            }
 
             JsonWebSecurityToken jsonToken = new JsonWebSecurityToken(
                 nameid, // outer token issuer should match actor token nameid
@@ -223,12 +272,15 @@ namespace Replace.This.With.Your.Custom.Namespace
             return accessToken;
         }
 
-
+        /// <summary>
+        /// Retrieves the identity for the ClaimsIdentity
+        /// </summary>
+        /// <param name="identity">The Claims Identity</param>
+        /// <param name="SamlIdentityClaimType">The Claims Identity Type</param>
+        /// <returns></returns>
         private static TokenHelper.ClaimsUserIdClaim RetrieveIdentityForSamlClaimsUser(ClaimsIdentity identity, IdentityClaimType SamlIdentityClaimType)
         {
-
             TokenHelper.ClaimsUserIdClaim id = new ClaimsUserIdClaim();
-
             try
             {
                 if (identity.IsAuthenticated)
@@ -275,9 +327,12 @@ namespace Replace.This.With.Your.Custom.Namespace
         }
 
         
-        //this is an implementation based on using role claims for SMTP and SIP where the 
-        //claim value starts with "SMTP:" or "SIP:".  There isn't a standard way to implement
-        //this so you can choose whatever method you want and then update this method appropriately
+        /// <summary>
+        /// NOT IMPLEMENTED
+        /// </summary>
+        /// <param name="identity"></param>
+        /// <param name="SamlIdentityClaimType"></param>
+        /// <returns></returns>
         private static TokenHelper.ClaimsUserIdClaim RetrieveIdentityForFbaClaimsUser(ClaimsIdentity identity, IdentityClaimType SamlIdentityClaimType)
         {
             throw new NotImplementedException();
@@ -321,14 +376,14 @@ namespace Replace.This.With.Your.Custom.Namespace
     #region HighTrust with SAML
 
     /// <summary>
-    /// Encapsulates all the information from SharePoint in HighTrust mode.
+    /// Encapsulates all the information from SharePoint in HighTrust mode with SAML Claims.
     /// </summary>
     public class SharePointHighTrustSamlContext : SharePointContext
     {
         private readonly ClaimsIdentity logonUserIdentity;
 
         /// <summary>
-        /// The Windows identity for the current user.
+        /// The Claims identity for the current user.
         /// </summary>
         public ClaimsIdentity LogonUserIdentity
         {
@@ -409,7 +464,6 @@ namespace Replace.This.With.Your.Custom.Namespace
 
             }
         }
-
         public SharePointHighTrustSamlContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, ClaimsIdentity logonUserIdentity)
             : base(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber)
         {
@@ -460,7 +514,7 @@ namespace Replace.This.With.Your.Custom.Namespace
     }
 
     /// <summary>
-    /// Default provider for SharePointHighTrustContext.
+    /// Default provider for SharePointHighTrustSamlContext.
     /// </summary>
     public class SharePointHighTrustSamlContextProvider : SharePointHighTrustContextProvider
     {
@@ -468,12 +522,10 @@ namespace Replace.This.With.Your.Custom.Namespace
         protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequestBase httpRequest)
         {
             ClaimsIdentity logonUserIdentity = HttpContext.Current.User.Identity as ClaimsIdentity;
-            //ClaimsIdentity logonUserIdentity = httpRequest.LogonUserIdentity;
             if (logonUserIdentity == null || !logonUserIdentity.IsAuthenticated )
             {
                 return null;
             }
-
 
             return new SharePointHighTrustSamlContext(spHostUrl, spAppWebUrl, spLanguage, spClientTag, spProductNumber, logonUserIdentity);
         }
