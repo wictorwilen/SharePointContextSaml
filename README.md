@@ -30,7 +30,7 @@ static SharePointContextProvider()
     }
     else
     {
-        if(HttpContext.Current.User.Identity.GetType() == typeof(ClaimsIdentity)) {
+        if (HttpContext.Current.User.Identity.GetType() == typeof(ClaimsIdentity)) {
             SharePointContextProvider.current = new SharePointHighTrustSamlContextProvider();
         } else {
             SharePointContextProvider.current = new SharePointHighTrustContextProvider();

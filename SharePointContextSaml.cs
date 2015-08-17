@@ -326,7 +326,7 @@ namespace Replace.This.With.Your.Custom.Namespace
             return id;
         }
 
-        
+
         /// <summary>
         /// NOT IMPLEMENTED
         /// </summary>
@@ -518,11 +518,11 @@ namespace Replace.This.With.Your.Custom.Namespace
     /// </summary>
     public class SharePointHighTrustSamlContextProvider : SharePointHighTrustContextProvider
     {
-
+        private const string SPContextKey = "SPContext";
         protected override SharePointContext CreateSharePointContext(Uri spHostUrl, Uri spAppWebUrl, string spLanguage, string spClientTag, string spProductNumber, HttpRequestBase httpRequest)
         {
             ClaimsIdentity logonUserIdentity = HttpContext.Current.User.Identity as ClaimsIdentity;
-            if (logonUserIdentity == null || !logonUserIdentity.IsAuthenticated )
+            if (logonUserIdentity == null || !logonUserIdentity.IsAuthenticated)
             {
                 return null;
             }
@@ -552,9 +552,9 @@ namespace Replace.This.With.Your.Custom.Namespace
             return httpContext.Session[SPContextKey] as SharePointHighTrustSamlContext;
         }
 
-        protected override SharePointContext SaveSharePointContext(HttpContextBase httpContext)
+        protected override void SaveSharePointContext(SharePointContext spContext, HttpContextBase httpContext)
         {
-            return httpContext.Session[SPContextKey] as SharePointHighTrustSamlContext;
+            httpContext.Session[SPContextKey] = spContext as SharePointHighTrustSamlContext;
         }
     }
 
