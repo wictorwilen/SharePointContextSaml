@@ -546,6 +546,16 @@ namespace Replace.This.With.Your.Custom.Namespace
 
             return false;
         }
+
+        protected override SharePointContext LoadSharePointContext(HttpContextBase httpContext)
+        {
+            return httpContext.Session[SPContextKey] as SharePointHighTrustSamlContext;
+        }
+
+        protected override SharePointContext SaveSharePointContext(HttpContextBase httpContext)
+        {
+            return httpContext.Session[SPContextKey] as SharePointHighTrustSamlContext;
+        }
     }
 
     #endregion HighTrust
