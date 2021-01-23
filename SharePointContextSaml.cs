@@ -224,10 +224,12 @@ namespace Replace.This.With.Your.Custom.Namespace
             }
 
 
-            if (addSamlClaim)
-            {
-                actorClaims.Add(new JsonWebTokenClaim(samlClaimType, samlClaimValue));
-            }
+            //this is incorrect, SP blocks user claims on actor tokens now as of Apr 2020
+            //this change was incorporated into fixes after that time. ULS event ID of the block is 'dem4o'
+            //if (addSamlClaim)
+            //{
+            //    actorClaims.Add(new JsonWebTokenClaim(samlClaimType, samlClaimValue));
+            //}
 
             // Create token
             JsonWebSecurityToken actorToken = new JsonWebSecurityToken(
